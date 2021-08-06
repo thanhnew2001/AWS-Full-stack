@@ -1,0 +1,12 @@
+url:
+localhost:4001/register
+
+
+body:
+
+{
+	"first_name": "Thanh",
+	"last_name": "Nguyen",
+	"email": "toan@gmail.com",
+	"password": "123456"
+}
