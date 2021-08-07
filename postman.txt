@@ -1,8 +1,13 @@
-url:
+//copy missing code in app.js
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+
+
+//url:
 localhost:4001/register
 
 
-body:
+//body:
 
 {
 	"first_name": "Thanh",
