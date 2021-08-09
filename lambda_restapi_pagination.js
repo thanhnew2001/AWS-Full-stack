@@ -1,7 +1,20 @@
-
 const AWS = require("aws-sdk");
 
 const dynamo = new AWS.DynamoDB.DocumentClient();
+
+const scanAll = async (params) => {
+  let lastEvaluatedKey = 'dummy'; // string must not be empty
+  const itemsAll = [];
+  while (lastEvaluatedKey) {
+    const data = await dynamo.scan(params).promise();
+    itemsAll.push(...data.Items);
+    lastEvaluatedKey = data.LastEvaluatedKey;
+    if (lastEvaluatedKey) {
+      params.ExclusiveStartKey = lastEvaluatedKey;
+    }
+  }
+  return itemsAll;
+}
      
 exports.handler = async (event) => {
         
@@ -44,7 +57,7 @@ exports.handler = async (event) => {
         break;
       case "GET /items/search":
         
-        
+        //HOW TO CREATE GLOBAL INDEX 
         // var params = {
         //   TableName: 'chtc',
         //   IndexName: 'pname-index',
@@ -54,13 +67,57 @@ exports.handler = async (event) => {
         
         // //body = await dynamo.scan({ TableName: "chtc" }).promise();
         // body = await dynamo.query(params).promise()
-        keyword = event['queryStringParameters']['keyword']
-        pageSize = parseInt(event['queryStringParameters']['pageSize'])
-        pageNo =  parseInt(event['queryStringParameters']['pageNo'])
         
-        body = await dynamo.scan({ TableName: "chtc" }).promise();
-        body = body.Items.filter(s=>s.pname.indexOf(keyword)>=0)
-        body = body.slice((pageNo-1)*pageSize, pageNo*pageSize)
+        //HOW TO DO PAGINATION
+        // keyword = event['queryStringParameters']['keyword']
+        // pageSize = parseInt(event['queryStringParameters']['pageSize'])
+        // pageNo =  parseInt(event['queryStringParameters']['pageNo'])
+        
+        // body = await dynamo.scan({ TableName: "chtc" }).promise();
+        // body = body.Items.filter(s=>s.pname.indexOf(keyword)>=0)
+        // body = body.slice((pageNo-1)*pageSize, pageNo*pageSize)
+        
+         //body = await dynamo.query(params).promise()
+         
+         //  KeyConditionExpression: '#user_id = :user_id and begins_with(#user_relation, :user_relation)',
+
+         
+        // body = await dynamo.query({
+        //   TableName: 'chtc',
+        //   //KeyConditionExpression: 'id = :id',
+        //   KeyConditionExpression: 'begins_with(id, :id)', //THIS NOT WORK
+        //   FilterExpression : 'contains (student_name, :keyword)',
+        //   ExpressionAttributeValues: {
+        //     ':id': 'u',
+        //     ':keyword': event['queryStringParameters']['name']
+        //   }
+        // }).promise()
+        
+      const SEARCH_KEYWORD = event['queryStringParameters']['name']
+      let params = {
+          TableName : 'chtc',
+          FilterExpression: "contains(#student_name, :keyword)",
+          ExpressionAttributeNames: { 
+              "#student_name": "name", //student_name is a new place holder, name is column in the db
+          },
+          ExpressionAttributeValues: {
+              ":keyword": SEARCH_KEYWORD,
+          }       
+      };
+      
+       //body = await dynamo.scan(params).promise() //DO NOT WORK WITH QUERY
+       
+        let lastEvaluatedKey = 'dummy'; // string must not be empty
+        const itemsAll = [];
+        while (lastEvaluatedKey) {
+          const data = await dynamo.scan(params).promise();
+          itemsAll.push(...data.Items);
+          lastEvaluatedKey = data.LastEvaluatedKey;
+          if (lastEvaluatedKey) {
+            params.ExclusiveStartKey = lastEvaluatedKey;
+          }
+        }
+        body = {"Items": itemsAll}
         
         break;
       case "PUT /items":
@@ -69,7 +126,7 @@ exports.handler = async (event) => {
           .put({
             TableName: "chtc",
             Item: {
-              id: requestJSON.id,
+              id:  requestJSON.id,
               price: requestJSON.price,
               name: requestJSON.name
             }
